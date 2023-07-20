@@ -602,7 +602,7 @@ init() {
 }
 
 build() {
-  if [[ "${NEED_WHEELS}" == "true" ]]; then
+  if [[ "${NEED_WHEELS}" == "1" ]]; then
     build_wheels_and_jars
     return
   fi
