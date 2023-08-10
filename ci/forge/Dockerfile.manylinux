@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1.3-labs
+
+FROM quay.io/pypa/manylinux2014_x86_64:2022-12-20-b4884d9
+
+ENV BUILD_JAR=1
+ENV RAY_INSTALL_JAVA=1
+
+RUN <<EOF
+
+set -exuo pipefail
+
+if [[ ! -e /usr/bin/nproc ]]; then
+  echo -e '#!/bin/bash\necho 10' > "/usr/bin/nproc"
+  chmod +x /usr/bin/nproc
+fi
+
+# Install ray cpp dependencies.
+yum -y install unzip zip sudo openssl xz
+if [[ "${HOSTTYPE-}" == "x86_64" ]]; then
+  yum -y install libasan-4.8.5-44.el7.x86_64 libubsan-7.3.1-5.10.el7.x86_64 \
+    devtoolset-8-libasan-devel.x86_64
+fi
+
+# Install ray java dependencies.
+if [[ "${RAY_INSTALL_JAVA}" == "1" ]]; then
+  yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel maven
+  java -version
+  JAVA_BIN="$(readlink -f "$(command -v java)")"
+  echo "java_bin path ${JAVA_BIN}"
+  export JAVA_HOME="${JAVA_BIN%jre/bin/java}"
+fi
+
+# Install ray dashboard dependencies.
+set +x
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+source "$HOME"/.nvm/nvm.sh
+
+NODE_VERSION="14"
+nvm install "$NODE_VERSION"
+nvm use "$NODE_VERSION"
+
+# Install bazel
+npm install -g @bazel/bazelisk
+ln -s "$(which bazelisk)" /usr/local/bin/bazel
+
+{
+  echo "build --config=ci"
+  echo "build --announce_rc"
+  echo "build --incompatible_linkopts_to_linklibs"
+  echo "build:ci --remote_cache=https://bazel-cache-dev.s3.us-west-2.amazonaws.com"
+} > ~/.bazelrc
+
+EOF
