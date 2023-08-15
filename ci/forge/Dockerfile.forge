@@ -58,8 +58,11 @@ RUN <<EOF
 
 set -euo pipefail
 
-echo "build --config=ci" > ~/.bazelrc
-echo "build --announce_rc" >> ~/.bazelrc
+{
+  echo "build --config=ci"
+  echo "build --announce_rc"
+  echo "build --remote_cache=https://bazel-cache-dev.s3.us-west-2.amazonaws.com" 
+} > ~/.bazelrc
 
 EOF
 
